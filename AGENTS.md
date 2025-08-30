@@ -10,16 +10,17 @@ npx --yes http-server -p 8080 -c-1 . > /dev/null 2>&1 & echo $! > /tmp/http-serv
 2. Publish the local port (default http-server port 8080):
 
 ```bash
-# Save tunnel password and ensure newline separation
-curl -fsSL https://loca.lt/mytunnelpassword > /workspace/.port
-printf "\n" >> /workspace/.port
+# Preferred: use the helper script
+/workspace/scripts/publish_tunnel.sh
 
-# Stop any existing localtunnel (fileless, by pattern)
+# Or inline (equivalent) if needed:
+rm -f /workspace/.port /tmp/localtunnel.pid
+IP=$(curl -fsSL https://loca.lt/mytunnelpassword || true)
+SUB=clk$RANDOM$RANDOM
+URL=https://$SUB.loca.lt
+printf '%s\n%s\n' "$IP" "$URL" > /workspace/.port
 pkill -f 'localtunnel --port 8080' 2>/dev/null || true
-
-# Start fileless tunnel and capture the first URL into /workspace/.port while keeping the tunnel alive
-npx --yes localtunnel --port 8080 \
-  | stdbuf -oL tee >(grep -m1 -Eo 'https?://[^[:space:]]+' >> /workspace/.port) >/dev/null &
+nohup npx --yes localtunnel --port 8080 --subdomain "$SUB" >/tmp/localtunnel.log 2>&1 & echo $! > /tmp/localtunnel.pid
 ```
 
 3. Before committing changes, always run the tests and ESLint fix:
